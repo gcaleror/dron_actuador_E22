@@ -30,6 +30,8 @@ unsigned long  watchdog_time;
 unsigned long  send_state_time;
 unsigned long  mover_time;
 
+char estado = 'w';
+void(* resetFunc) (void) = 0; //declare reset function @ address 0
 void setup() {
 
   pinMode(marti1,OUTPUT);
@@ -63,19 +65,23 @@ void loop(){
     //e22ttl.sendMessage("w");
   }
 
-  //Enviar el estado independientemente de lo que suceda
+  //Enviar el estado independientemente de lo que suceda cada segundo
   if(millis() - send_state_time > 1000){
-    e22ttl.sendMessage("w");
+    Serial.println("Enviar estado");
+    send_state_time = millis();
+    e22ttl.sendMessage(String(estado));
   }
 
   //Realizar accionamiento cada cierto tiempo
   if((millis()- mover_time) > 200){
+    Serial.println("Accionamiento");
+    mover_time = millis();
     mover(datoo);//accion dura un tiempo considerable
   }
 
 
-  if((millis()-watchdog_time) > 30000){
-    Serial.println("No ha recibido nada por 30s ");
+  if((millis()-watchdog_time) > 20000){
+    Serial.println("No ha recibido nada por 20s ");
     watchdog_time = millis();
     dosificado_1.write(90); 
     dosificado_2.write(90); 
@@ -84,7 +90,8 @@ void loop(){
     i=0;
     j=0;
     delay(500);
-    reset();
+    resetFunc();  //call reset
+    //reset();
   }
 }
 
@@ -101,32 +108,29 @@ void rele2()
 }
 
 
-void reset(){
-  //TODO:agregar código para resetear módulo LoRa
-  wdt_enable(WDTO_15MS);
-  while(1){};
-}
-
-void mover(char estado){
-   switch (estado){
+void mover(char dat){
+   switch (dat){
     case 'A':
       dosificado_1.write(15);    // giro horario
       i = 1;
-      e22ttl.sendMessage("X");
+      estado = 'X';
+      //e22ttl.sendMessage("X");
     break;
     
     case 'B':
       dosificado_1.write(90);//cerrado
       i=0;
       digitalWrite(marti1,LOW);
-     e22ttl.sendMessage("Y");
+      estado = 'Y';
+     //e22ttl.sendMessage("Y");
     break;  
     
     case 'C':
       dosificado_2.write(15);   // giro antihorario
       //Serial.println("dosificado 2> abierto");
       j = 1;
-      e22ttl.sendMessage("Z");
+      estado = 'Z';
+      //e22ttl.sendMessage("Z");
       //Serial.println("dosificado 1> cerrado");
     break;
     
@@ -136,7 +140,8 @@ void mover(char estado){
       
       digitalWrite(marti2,LOW);
       j=0;
-      e22ttl.sendMessage("W");
+      //e22ttl.sendMessage("W");
+      estado = 'W';
       //Serial.println("dosificado 1> cerrado");
     break;
     
@@ -147,6 +152,7 @@ void mover(char estado){
       digitalWrite(marti2,LOW);
       i=0;
       j=0;
+      estado = 'w';
   }
 
   if(i == 1)   rele1();
